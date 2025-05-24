@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高考历史基础知识 - 太空射击挑战</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+            cursor: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9), transparent);
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #question {
+            font-size: 28px;
+            text-align: center;
+            color: #FFD700;
+            text-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
+            margin-bottom: 20px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .stat-item {
+            background: linear-gradient(135deg, rgba(0,100,255,0.3), rgba(0,200,255,0.2));
+            padding: 12px 25px;
+            border-radius: 30px;
+            border: 2px solid rgba(0,200,255,0.6);
+            backdrop-filter: blur(10px);
+            font-size: 18px;
+            box-shadow: 0 0 20px rgba(0,200,255,0.4);
+            animation: statPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes statPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        
+        #crosshair {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+        }
+        
+        #startScreen, #endScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, rgba(0,0,80,0.95), rgba(0,0,0,1));
+            z-index: 100;
+        }
+        
+        #endScreen {
+            display: none;
+        }
+        
+        .game-title {
+            font-size: 56px;
+            color: #FFD700;
+            text-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500;
+            margin-bottom: 30px;
+            animation: titleFloat 3s ease-in-out infinite;
+            letter-spacing: 3px;
+        }
+        
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .btn {
+            padding: 18px 50px;
+            font-size: 22px;
+            background: linear-gradient(135deg, #1E90FF, #00BFFF, #4169E1);
+            background-size: 200% 200%;
+            animation: btnGradient 3s ease infinite;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 25px rgba(30,144,255,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        @keyframes btnGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 35px rgba(30,144,255,0.7);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+        
+        #wrongAnswers {
+            margin-top: 20px;
+            max-width: 900px;
+            max-height: 350px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.6);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,215,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .wrong-item {
+            background: linear-gradient(to right, rgba(255,0,0,0.15), rgba(255,0,0,0.05));
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border-left: 5px solid #FF4444;
+            font-size: 17px;
+            transition: all 0.3s;
+        }
+        
+        .wrong-item:hover {
+            background: linear-gradient(to right, rgba(255,0,0,0.25), rgba(255,0,0,0.15));
+            transform: translateX(5px);
+            box-shadow: 0 5px 20px rgba(255,0,0,0.2);
+        }
+        
+        .combo-display {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 100px;
+            color: #FFD700;
+            font-weight: bold;
+            pointer-events: none;
+            text-shadow: 0 0 50px #FFD700, 0 0 100px #FFA500;
+            animation: comboAnim 1s ease-out forwards;
+            z-index: 50;
+        }
+        
+        @keyframes comboAnim {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(-360deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        #soundToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #FFD700;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 101;
+        }
+        
+        #soundToggle:hover {
+            background: rgba(255,215,0,0.2);
+        }
+        
+        @keyframes encourageAnim {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(2) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(180deg) translateY(-50px);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes correctAnswerAnim {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0;
+            }
+            20% {
+                transform: translate(-50%, -50%) scale(1.2);
+                opacity: 1;
+            }
+            80% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="crosshair">
+        <svg width="50" height="50">
+            <circle cx="25" cy="25" r="20" fill="none" stroke="#FFD700" stroke-width="2" opacity="0.8"/>
+            <circle cx="25" cy="25" r="3" fill="#FFD700"/>
+            <line x1="25" y1="5" x2="25" y2="15" stroke="#FFD700" stroke-width="2"/>
+            <line x1="25" y1="35" x2="25" y2="45" stroke="#FFD700" stroke-width="2"/>
+            <line x1="5" y1="25" x2="15" y2="25" stroke="#FFD700" stroke-width="2"/>
+            <line x1="35" y1="25" x2="45" y2="25" stroke="#FFD700" stroke-width="2"/>
+        </svg>
+    </div>
+    
+    <div id="soundToggle" onclick="toggleSound()">🔊</div>
+    
+    <div id="gameUI" style="display: none;">
+        <div id="question"></div>
+        <div id="stats">
+            <div class="stat-item">🎯 得分: <span id="score">0</span>/100</div>
+            <div class="stat-item">📝 第 <span id="current">1</span>/10 题</div>
+            <div class="stat-item">🔥 连击: <span id="combo">0</span></div>
+            <div class="stat-item">❤️ 生命: <span id="lives">3</span></div>
+        </div>
+    </div>
+    
+    <div id="startScreen">
+        <h1 class="game-title">🚀 高考历史基础知识 🚀</h1>
+        <p style="font-size: 24px; margin-bottom: 10px; color: #00BFFF;">太空射击挑战</p>
+        <p style="font-size: 18px; margin-bottom: 30px; color: #87CEEB;">驾驶歼-20战机，射击正确的历史答案！</p>
+        <button class="btn" onclick="startGame()">🎮 开始挑战</button>
+        <button class="btn" onclick="toggleLeaderboard()">🏆 英雄排行榜</button>
+        <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center;">
+            <p style="font-size: 16px; color: #FFD700; margin-bottom: 5px;">开发者：伊利丹</p>
+            <p style="font-size: 14px; color: #87CEEB;">© 2024 高考历史学习游戏</p>
+        </div>
+        <div id="leaderboard" style="display: none;">
+            <h3 style="text-align: center; color: #FFD700; font-size: 24px; margin-bottom: 15px;">🏆 历史知识英雄榜 🏆</h3>
+            <div id="leaderboardList"></div>
+        </div>
+    </div>
+    
+    <div id="endScreen">
+        <h1 class="game-title" style="font-size: 48px; margin-bottom: 30px;">🎯 挑战结束 🎯</h1>
+        
+        <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 30px;">
+            <div style="text-align: center;">
+                <p style="font-size: 20px; color: #87CEEB; margin-bottom: 10px;">最终得分</p>
+                <p style="font-size: 56px; color: #FFD700; font-weight: bold;"><span id="finalScore">0</span>/100</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: 20px; color: #87CEEB; margin-bottom: 10px;">正确率</p>
+                <p style="font-size: 56px; color: #00BFFF; font-weight: bold;"><span id="accuracy">0</span>%</p>
+            </div>
+            <div style="text-align: center;">
+                <p style="font-size: 20px; color: #87CEEB; margin-bottom: 10px;">最高连击</p>
+                <p style="font-size: 56px; color: #FF6B35; font-weight: bold;"><span id="maxCombo">0</span></p>
+            </div>
+        </div>
+        
+        <div class="grade-display" id="gradeDisplay" style="font-size: 36px; margin-bottom: 30px;"></div>
+        
+        <button class="btn" onclick="restartGame()" style="font-size: 24px; padding: 20px 60px; margin-bottom: 30px;">🔄 再战一次</button>
+        
+        <div id="wrongAnswers" style="max-height: 350px; width: 90%; max-width: 900px;"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const crosshair = document.getElementById('crosshair');
+        
+        // 音频上下文
+        let audioContext = null;
+        let soundEnabled = true;
+        
+        // 初始化音频
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 播放音效
+        function playSound(type) {
+            if (!soundEnabled || !audioContext) return;
+            
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            
+            switch(type) {
+                case 'shoot':
+                    osc.frequency.value = 800;
+                    osc.type = 'square';
+                    gain.gain.setValueAtTime(0.1, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    osc.start();
+                    osc.stop(audioContext.currentTime + 0.1);
+                    break;
+                    
+                case 'hit':
+                    osc.frequency.value = 400;
+                    osc.type = 'sine';
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioContext.currentTime + 0.3);
+                    break;
+                    
+                case 'correct':
+                    for (let i = 0; i < 3; i++) {
+                        const o = audioContext.createOscillator();
+                        const g = audioContext.createGain();
+                        o.connect(g);
+                        g.connect(audioContext.destination);
+                        o.frequency.value = 523.25 * Math.pow(2, i/4);
+                        o.type = 'sine';
+                        g.gain.setValueAtTime(0.1, audioContext.currentTime + i * 0.1);
+                        g.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.2);
+                        o.start(audioContext.currentTime + i * 0.1);
+                        o.stop(audioContext.currentTime + i * 0.1 + 0.2);
+                    }
+                    break;
+                    
+                case 'wrong':
+                    osc.frequency.value = 200;
+                    osc.type = 'sawtooth';
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    osc.start();
+                    osc.stop(audioContext.currentTime + 0.5);
+                    break;
+            }
+        }
+        
+        // 切换音效
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
+        }
+        
+        // 设置画布大小
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 游戏变量
+        let gameState = 'menu';
+        let score = 0;
+        let currentQuestion = 0;
+        let lives = 3;
+        let combo = 0;
+        let maxCombo = 0;
+        let questions = [];
+        let currentQuestionData = null;
+        let targets = [];
+        let bullets = [];
+        let particles = [];
+        let stars = [];
+        let wrongAnswers = [];
+        let correctCount = 0;
+        let mouseX = 0;
+        let mouseY = 0;
+        let currentQuestionAnswered = false;
+        let lastHitTarget = null;
+        
+        // 飞机
+        let plane = {
+            x: canvas.width / 2,
+            y: canvas.height - 150,
+            targetX: canvas.width / 2,
+            angle: 0,
+            speed: 0.2
+        };
+        
+        // 完整题库
+        const questionBank =[
+{ question: "当前官方观点是：中国有_____年的文明史", correctAnswer: "5千", wrongAnswers: ["100万年", "1万年", "3千年"] },
+{ question: "科举制废除于_____时期", correctAnswer: "清末新政", wrongAnswers: ["中华民国临时政府", "新文化运动", "戊戌变法"] },
+{ question: "科举制正式废除于_____年", correctAnswer: "1905", wrongAnswers: ["1911", "1912", "1901"] },
+{ question: "当前官方观点是：_____文化，实证中华文明五千年", correctAnswer: "良渚", wrongAnswers: ["陶寺", "红山", "仰韶"] },
+{ question: "战国初期，对儒家构成巨大压力的是_____。", correctAnswer: "墨家与杨朱学派", wrongAnswers: ["法家与道家", "佛教与道教", "宗教神学观"] },
+{ question: "小农经济产生于_____时期。", correctAnswer: "春秋战国", wrongAnswers: ["新石器时代初期", "西周", "魏晋庄园经济"] },
+{ question: "儒学在汉代开始了_____化。", correctAnswer: "神学", wrongAnswers: ["伦理学", "哲学", "科学"] },
+{ question: "儒学在_____时期完成了哲学化。", correctAnswer: "宋明", wrongAnswers: ["战国", "汉代", "明清"] },
+{ question: "新疆在_____时期正式纳入中国版图。", correctAnswer: "西汉", wrongAnswers: ["秦朝", "唐朝", "元朝"] },
+{ question: "西藏在_____时期正式纳入中国版图。", correctAnswer: "元朝", wrongAnswers: ["汉朝", "唐朝", "明朝"] },
+{ question: "康熙时期，清政府在台湾设____，隶属福建省", correctAnswer: "府", wrongAnswers: ["县", "州", "省"] },
+{ question: "_____战争后，清政府在台湾正式设省。", correctAnswer: "中法", wrongAnswers: ["鸦片", "甲午中日", "八国联军侵华"] },
+{ question: "私营手工业超过官营开始于_____", correctAnswer: "明朝中后期", wrongAnswers: ["春秋战国", "宋元时期", "鸦片战争后"] },
+{ question: "汉字、绘画的艺术化开始于____时期", correctAnswer: "魏晋", wrongAnswers: ["陶寺", "春秋战国", "唐"] },
+{ question: "“华夏认同”观念开始于____时期", correctAnswer: "东周", wrongAnswers: ["新石器时代", "西周", "秦汉"] },
+{ question: "租庸调制从____开始实行", correctAnswer: "唐朝", wrongAnswers: ["汉", "北魏", "清"] },
+{ question: "率先在全国通行纸币的是___", correctAnswer: "元代", wrongAnswers: ["汉武帝以后", "宋代", "明代"] },
+{ question: "设立内阁大学士的是____", correctAnswer: "明成祖", wrongAnswers: ["明太祖", "明宪宗", "万历帝"] },
+{ question: "_____，经济重心开始南移。", correctAnswer: "安史之乱后", wrongAnswers: ["魏晋南北朝", "两宋时期", "明中后期"] },
+{ question: "明朝起止时间是____年", correctAnswer: "1368--1644", wrongAnswers: ["960--1279", "1566--1644", "1644-1765"] },
+{ question: "中国自然经济开始解体于_____", correctAnswer: "鸦片战争后", wrongAnswers: ["晚明时期", "甲午战后", "新中国成立"] },
+{ question: "与中国同盟会产生同一年的是____", correctAnswer: "五大臣出洋考察宪政", wrongAnswers: ["甲午中日战争", "《辛丑条约》签订", "“皇族内阁”产生"] },
+{ question: "与“皇族内阁”同一年出现的是____", correctAnswer: "武昌起义", wrongAnswers: ["《辛丑条约》签订", "《钦定宪法大纲》颁布", "光绪和慈禧去世"] },
+{ question: "东南互保与____同时", correctAnswer: "义和团运动", wrongAnswers: ["太平天国运动", "洋务运动", "辛亥革命"] },
+{ question: "列宁逝世同一年发生的是____", correctAnswer: "国民党一大召开", wrongAnswers: ["五四运动", "北伐开始", "南昌起义"] },
+{ question: "与国民党形式上统一全国在同一年的是____", correctAnswer: "井冈山会师", wrongAnswers: ["南昌起义", "井冈山根据地开始建立", "中原大战"] },
+{ question: "甲午战后____年，日俄战争爆发。", correctAnswer: "十", wrongAnswers: ["两年", "五年", "二十年"] },
+{ question: "国民党政府推行法币政策是在____年", correctAnswer: "1935", wrongAnswers: ["1933", "1937", "1948"] },
+{ question: "国民党政府“训政”阶段的时间是____年期间。", correctAnswer: "1928--1948", wrongAnswers: ["1912--1927", "1927--1937", "1937--1945"] },
+{ question: "清朝对外贸易第一次出现入超是在____年。", correctAnswer: "1865", wrongAnswers: ["1842", "1895", "1901"] },
+{ question: "《资政新篇》颁布的同一年，_____发表。", correctAnswer: "《物种起源》", wrongAnswers: ["“日心说”", "《天朝田亩制度》", "三民主义"] },
+{ question: "太平天国运动的起止时间是____年。", correctAnswer: "1851--1864", wrongAnswers: ["1856--1860", "1861--1895", "1860--1885"] },
+{ question: "《天朝田亩制度》颁布100周年时，中国开始进行_____。", correctAnswer: "农业合作化", wrongAnswers: ["土地改革运动", "人民公社化", "家庭联产承包责任制"] },
+{ question: "不属于中国19世纪70年代出现的是____。", correctAnswer: "中法战争", wrongAnswers: ["民族资本主义产生", "洋务派民用工业开始", "边疆危机"] },
+{ question: "属于中国19世纪40年代出现的是____。", correctAnswer: "五口通商", wrongAnswers: ["洋务运动", "火烧圆明园", "太平天国运动"] },
+{ question: "属于中国19世纪50年代出现的是____。", correctAnswer: "农民运动达到了最高峰", wrongAnswers: ["近代工业化开始", "边疆危机", "安庆内军械所"] },
+{ question: "甲午中日战争发生在____年。", correctAnswer: "1894--1895", wrongAnswers: ["1883--1885", "1898", "1900--1901"] },
+{ question: "列强对华资本输出为主的时间是____以后。", correctAnswer: "甲午战争", wrongAnswers: ["鸦片战争", "太平天国运动", "《辛丑条约》签订"] },
+{ question: "列强瓜分中国的狂潮开始于____年。", correctAnswer: "1897", wrongAnswers: ["1860", "1898", "1901"] },
+{ question: "清政府宣布“预备立宪”开始于____年。", correctAnswer: "1906", wrongAnswers: ["1901", "1905", "1908"] },
+{ question: "不属于1908年发生的是____。", correctAnswer: "“皇族内阁”出台", wrongAnswers: ["慈禧去世", "《钦定宪法大纲》", "光绪去世"] },
+{ question: "属于1912年1月份的是____。", correctAnswer: "民国建立", wrongAnswers: ["清朝灭亡", "北洋政府成立", "《临时约法》颁布"] },
+{ question: "两税法产生的背景是____。", correctAnswer: "安史之乱以后", wrongAnswers: ["贞观年间", "开元盛世", "均田制盛行"] },
+{ question: "设置驻藏大臣的朝代是____朝。", correctAnswer: "清", wrongAnswers: ["汉", "唐", "元"] },
+{ question: "设置十三行对外贸易机构的是____朝。", correctAnswer: "清", wrongAnswers: ["唐", "宋", "元"] },
+{ question: "两条丝绸之路最早开通于____朝。", correctAnswer: "汉", wrongAnswers: ["秦", "唐", "元"] },
+{ question: "不属于汉武帝时期的是实行____政策。", correctAnswer: "削藩", wrongAnswers: ["五经博士", "中朝制", "盐铁官营"] },
+{ question: "下列属于汉武帝时期与西域关系的是____。", correctAnswer: "张骞通西域", wrongAnswers: ["设立西域都护", "设立安西都护府", "设立北庭都护府"] },
+{ question: "华北五省不允许科举考试，最早始于____年。", correctAnswer: "1901", wrongAnswers: ["1860", "1895", "1912"] },
+{ question: "世界上最早由国家颁行的药典是在____朝。", correctAnswer: "唐", wrongAnswers: ["汉", "宋", "元"] },
+{ question: "中国现存最早的一部完整的农书产生于____时期。", correctAnswer: "北朝", wrongAnswers: ["汉朝", "唐朝", "五代"] },
+{ question: "“取士不问家世，婚姻不问阀阅”是____代的现象。", correctAnswer: "宋", wrongAnswers: ["周", "魏晋", "唐"] },
+{ question: "理学成为官方正统思想的是在____。", correctAnswer: "南宋以后", wrongAnswers: ["北宋中期", "南宋中期", "明朝初期"] },
+{ question: "倭寇不断对我国东部沿海进行侵扰开始于____。", correctAnswer: "元朝末期", wrongAnswers: ["两宋之际", "明朝初期", "明朝中期"] },
+{ question: "《尼布楚条约》签订在____年。", correctAnswer: "1689", wrongAnswers: ["1553", "1662", "1684"] },
+{ question: "思想家李贽是____的重要思想家。", correctAnswer: "明朝中后期", wrongAnswers: ["明朝中期", "明末清初", "清朝中期"] },
+{ question: "京剧形成于清朝____时期。", correctAnswer: "道光", wrongAnswers: ["康熙", "乾隆", "同治"] },
+{ question: "道教兴起于____。", correctAnswer: "东汉末年", wrongAnswers: ["春秋", "战国", "西汉末期"] },
+{ question: "安史之乱发生的时间是____。", correctAnswer: "8世纪中期", wrongAnswers: ["6世纪晚期", "7世纪初期", "10世纪初期"] }
+];
+        
+        // 创建星空背景
+        function createStars() {
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    size: Math.random() * 2 + 0.5,
+                    speed: Math.random() * 0.5 + 0.1,
+                    brightness: Math.random()
+                });
+            }
+        }
+        
+        // 绘制背景
+        function drawBackground() {
+            const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+            gradient.addColorStop(0, '#0a0a2e');
+            gradient.addColorStop(0.5, '#16213e');
+            gradient.addColorStop(1, '#000000');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            stars.forEach(star => {
+                ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`;
+                ctx.fillRect(star.x, star.y, star.size, star.size);
+                
+                star.y += star.speed;
+                if (star.y > canvas.height + 10) {
+                    star.y = -10;
+                    star.x = Math.random() * canvas.width;
+                }
+            });
+        }
+        
+        // 绘制歼-20
+        function drawJ20() {
+            plane.x += (plane.targetX - plane.x) * plane.speed;
+            plane.angle = (plane.targetX - plane.x) * 0.0002;
+            
+            ctx.save();
+            ctx.translate(plane.x, plane.y);
+            ctx.rotate(plane.angle);
+            
+            ctx.shadowColor = 'rgba(0, 200, 255, 0.5)';
+            ctx.shadowBlur = 20;
+            
+            const bodyGradient = ctx.createLinearGradient(0, -50, 0, 50);
+            bodyGradient.addColorStop(0, '#4A5568');
+            bodyGradient.addColorStop(0.5, '#2D3748');
+            bodyGradient.addColorStop(1, '#1A202C');
+            
+            ctx.fillStyle = bodyGradient;
+            ctx.beginPath();
+            ctx.moveTo(0, -50);
+            ctx.lineTo(-10, -30);
+            ctx.lineTo(-15, 0);
+            ctx.lineTo(-18, 35);
+            ctx.lineTo(-12, 50);
+            ctx.lineTo(0, 45);
+            ctx.lineTo(12, 50);
+            ctx.lineTo(18, 35);
+            ctx.lineTo(15, 0);
+            ctx.lineTo(10, -30);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#1A202C';
+            ctx.beginPath();
+            ctx.moveTo(-15, -5);
+            ctx.lineTo(-50, 20);
+            ctx.lineTo(-45, 40);
+            ctx.lineTo(-18, 30);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(15, -5);
+            ctx.lineTo(50, 20);
+            ctx.lineTo(45, 40);
+            ctx.lineTo(18, 30);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = '#2D3748';
+            ctx.beginPath();
+            ctx.moveTo(-10, -38);
+            ctx.lineTo(-30, -25);
+            ctx.lineTo(-25, -15);
+            ctx.lineTo(-10, -28);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(10, -38);
+            ctx.lineTo(30, -25);
+            ctx.lineTo(25, -15);
+            ctx.lineTo(10, -28);
+            ctx.closePath();
+            ctx.fill();
+            
+            const cockpitGradient = ctx.createRadialGradient(0, -25, 0, 0, -25, 15);
+            cockpitGradient.addColorStop(0, 'rgba(100, 200, 255, 0.9)');
+            cockpitGradient.addColorStop(1, 'rgba(50, 150, 200, 0.6)');
+            ctx.fillStyle = cockpitGradient;
+            ctx.beginPath();
+            ctx.ellipse(0, -25, 8, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.shadowColor = 'rgba(255, 100, 0, 0.8)';
+            ctx.shadowBlur = 30;
+            
+            for (let i = -1; i <= 1; i += 2) {
+                const flameLength = 30 + Math.random() * 20;
+                const flameGradient = ctx.createLinearGradient(i*8, 45, i*8, 45 + flameLength);
+                flameGradient.addColorStop(0, 'rgba(255, 200, 100, 0.9)');
+                flameGradient.addColorStop(0.5, 'rgba(255, 100, 50, 0.7)');
+                flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                
+                ctx.fillStyle = flameGradient;
+                ctx.beginPath();
+                ctx.moveTo(i*8 - 5, 45);
+                ctx.lineTo(i*8 - 3, 50);
+                ctx.lineTo(i*8, 45 + flameLength);
+                ctx.lineTo(i*8 + 3, 50);
+                ctx.lineTo(i*8 + 5, 45);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            ctx.shadowBlur = 0;
+            ctx.restore();
+        }
+        
+        // 创建目标
+        function createTargets() {
+            if (!currentQuestionData) return;
+            
+            targets = [];
+            const answers = [currentQuestionData.correctAnswer];
+            const wrongAnswers = [...currentQuestionData.wrongAnswers];
+            
+            while (wrongAnswers.length < 3) {
+                if (currentQuestionData.correctAnswer.includes("年")) {
+                    const year = parseInt(currentQuestionData.correctAnswer);
+                    if (!isNaN(year)) {
+                        wrongAnswers.push((year + wrongAnswers.length + 1) + "年");
+                    } else {
+                        wrongAnswers.push("待定");
+                    }
+                } else {
+                    wrongAnswers.push("其他选项" + (wrongAnswers.length + 1));
+                }
+            }
+            
+            answers.push(...wrongAnswers.slice(0, 3));
+            
+            for (let i = answers.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [answers[i], answers[j]] = [answers[j], answers[i]];
+            }
+            
+            for (let i = 0; i < 4; i++) {
+                const shapeData = [];
+                const points = 12 + Math.floor(Math.random() * 4);
+                for (let j = 0; j < points; j++) {
+                    shapeData.push({
+                        angle: (j / points) * Math.PI * 2,
+                        radiusOffset: Math.random() * 20 - 10
+                    });
+                }
+                
+                targets.push({
+                    x: (i + 0.5) * (canvas.width / 4),
+                    y: -150 - Math.random() * 100,
+                    text: answers[i],
+                    isCorrect: answers[i] === currentQuestionData.correctAnswer,
+                    speed: 1.05 + currentQuestion * 0.1,
+                    angle: 0,
+                    rotationSpeed: 0,
+                    shape: 'asteroid',
+                    shapeData: shapeData,
+                    size: 80,
+                    hit: false,
+                    opacity: 1,
+                    glowPhase: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        
+        // 绘制目标
+        function drawTargets() {
+            targets.forEach(target => {
+                if (target.hit) return;
+                
+                ctx.save();
+                ctx.translate(target.x, target.y);
+                
+                const glow = Math.sin(Date.now() * 0.003 + target.glowPhase) * 0.3 + 0.7;
+                ctx.shadowColor = 'rgba(100, 150, 255, 0.8)';
+                ctx.shadowBlur = 20 * glow;
+                
+                ctx.fillStyle = '#4A90E2';
+                
+                ctx.beginPath();
+                const baseRadius = target.size / 2;
+                
+                target.shapeData.forEach((point, i) => {
+                    const radius = baseRadius + point.radiusOffset;
+                    const x = Math.cos(point.angle) * radius;
+                    const y = Math.sin(point.angle) * radius;
+                    
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#60A5FA';
+                for (let i = 0; i < 5; i++) {
+                    const dotX = (Math.random() - 0.5) * target.size * 0.7;
+                    const dotY = (Math.random() - 0.5) * target.size * 0.7;
+                    ctx.beginPath();
+                    ctx.arc(dotX, dotY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fillRect(-target.size/2, target.size/2 - 25, target.size, 35);
+                
+                ctx.strokeStyle = '#60A5FA';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(-target.size/2, target.size/2 - 25, target.size, 35);
+                
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 16px Microsoft YaHei';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(target.text, 0, target.size/2 - 7);
+                
+                ctx.restore();
+                
+                target.y += target.speed;
+            });
+        }
+        
+        // 创建子弹
+        function shoot() {
+            bullets.push({
+                x: plane.x,
+                y: plane.y - 50,
+                vx: 0,
+                vy: -15,
+                trail: []
+            });
+            playSound('shoot');
+        }
+        
+        // 绘制子弹
+        function drawBullets() {
+            bullets = bullets.filter(bullet => {
+                bullet.y += bullet.vy;
+                
+                bullet.trail.push({x: bullet.x, y: bullet.y});
+                if (bullet.trail.length > 10) bullet.trail.shift();
+                
+                bullet.trail.forEach((point, i) => {
+                    ctx.fillStyle = `rgba(255, 215, 0, ${i / bullet.trail.length * 0.5})`;
+                    ctx.fillRect(point.x - 2, point.y, 4, 8);
+                });
+                
+                ctx.shadowColor = '#FFD700';
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(bullet.x - 3, bullet.y - 10, 6, 20);
+                ctx.shadowBlur = 0;
+                
+                return bullet.y > -20;
+            });
+        }
+        
+        // 创建粒子爆炸
+        function createExplosion(x, y, color, isCorrect) {
+            const particleCount = isCorrect ? 50 : 30;
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const speed = 2 + Math.random() * 6;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    life: 1,
+                    color: color,
+                    size: Math.random() * 4 + 2
+                });
+            }
+        }
+        
+        // 更新粒子
+        function updateParticles() {
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life -= 0.015;
+                
+                if (p.life > 0) {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowColor = p.color;
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    ctx.globalAlpha = 1;
+                    return true;
+                }
+                return false;
+            });
+        }
+        
+        // 显示鼓励符号
+        function showEncouragement(x, y) {
+            const symbols = ['✌️', '👊', '🦸', '🏅', '⭐', '💪', '🎯', '🏆'];
+            const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+            
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.left = x + 'px';
+            div.style.top = y + 'px';
+            div.style.fontSize = '80px';
+            div.style.transform = 'translate(-50%, -50%)';
+            div.style.pointerEvents = 'none';
+            div.style.zIndex = '200';
+            div.style.animation = 'encourageAnim 1.5s ease-out forwards';
+            div.textContent = symbol;
+            document.body.appendChild(div);
+            
+            setTimeout(() => div.remove(), 1500);
+        }
+        
+        // 显示正确答案
+        function showCorrectAnswer() {
+            const correctTarget = targets.find(t => t.isCorrect);
+            if (!correctTarget) return;
+            
+            const div = document.createElement('div');
+            div.style.position = 'fixed';
+            div.style.left = '50%';
+            div.style.top = '50%';
+            div.style.transform = 'translate(-50%, -50%)';
+            div.style.background = 'rgba(0, 0, 0, 0.9)';
+            div.style.border = '4px solid #10B981';
+            div.style.borderRadius = '20px';
+            div.style.padding = '30px 50px';
+            div.style.fontSize = '36px';
+            div.style.color = '#10B981';
+            div.style.fontWeight = 'bold';
+            div.style.textAlign = 'center';
+            div.style.zIndex = '300';
+            div.style.boxShadow = '0 0 50px rgba(16, 185, 129, 0.5)';
+            div.style.animation = 'correctAnswerAnim 2s ease-out forwards';
+            
+            div.innerHTML = `
+                <div style="font-size: 24px; color: #FFD700; margin-bottom: 10px;">正确答案是</div>
+                <div>${correctTarget.text}</div>
+            `;
+            
+            document.body.appendChild(div);
+            setTimeout(() => div.remove(), 2000);
+        }
+        
+        // 碰撞检测
+        function checkCollisions() {
+            bullets.forEach(bullet => {
+                targets.forEach(target => {
+                    if (!target.hit && 
+                        Math.abs(bullet.x - target.x) < target.size/2 + 10 &&
+                        Math.abs(bullet.y - target.y) < target.size/2 + 10) {
+                        
+                        target.hit = true;
+                        bullet.y = -100;
+                        
+                        lastHitTarget = target;
+                        
+                        createExplosion(target.x, target.y, '#60A5FA', false);
+                        playSound('hit');
+                        
+                        if (!currentQuestionAnswered) {
+                            currentQuestionAnswered = true;
+                            
+                            setTimeout(() => {
+                                processAnswer();
+                            }, 500);
+                        }
+                    }
+                });
+            });
+            
+            targets.forEach(target => {
+                if (!target.hit && target.isCorrect && target.y > canvas.height + 50) {
+                    if (!currentQuestionAnswered) {
+                        currentQuestionAnswered = true;
+                        combo = 0;
+                        
+                        wrongAnswers.push({
+                            question: currentQuestionData.question,
+                            correct: currentQuestionData.correctAnswer,
+                            wrong: "未作答"
+                        });
+                        
+                        if (lives > 0) {
+                            lives--;
+                            playSound('wrong');
+                            updateUI();
+                        }
+                        
+                        currentQuestion++;
+                        loadQuestion();
+                    }
+                }
+            });
+        }
+        
+        // 处理答案
+        function processAnswer() {
+            if (!lastHitTarget) return;
+            
+            if (lastHitTarget.isCorrect) {
+                score += 10;
+                correctCount++;
+                combo++;
+                createExplosion(lastHitTarget.x, lastHitTarget.y, '#10B981', true);
+                playSound('correct');
+                
+                showEncouragement(lastHitTarget.x, lastHitTarget.y);
+                
+                if (combo > maxCombo) maxCombo = combo;
+                if (combo >= 2) {
+                    const div = document.createElement('div');
+                    div.className = 'combo-display';
+                    div.innerHTML = `${combo}<br><span style="font-size: 40px;">连击!</span>`;
+                    document.body.appendChild(div);
+                    setTimeout(() => div.remove(), 1000);
+                }
+            } else {
+                combo = 0;
+                lives--;
+                createExplosion(lastHitTarget.x, lastHitTarget.y, '#EF4444', false);
+                playSound('wrong');
+                
+                showCorrectAnswer();
+                
+                wrongAnswers.push({
+                    question: currentQuestionData.question,
+                    correct: currentQuestionData.correctAnswer,
+                    wrong: lastHitTarget.text
+                });
+                
+                updateUI();
+                
+                if (lives <= 0 && currentQuestion >= 9) {
+                    setTimeout(() => endGame(), 2500);
+                }
+            }
+            
+            setTimeout(() => {
+                currentQuestion++;
+                loadQuestion();
+            }, lastHitTarget.isCorrect ? 1000 : 2500);
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawBackground();
+            
+            if (gameState === 'playing') {
+                drawJ20();
+                drawTargets();
+                drawBullets();
+                updateParticles();
+                checkCollisions();
+                
+                targets = targets.filter(t => t.isCorrect || t.y < canvas.height + 100);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 鼠标移动
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            crosshair.style.left = mouseX + 'px';
+            crosshair.style.top = mouseY + 'px';
+            
+            if (gameState === 'playing') {
+                plane.targetX = mouseX;
+            }
+        });
+        
+        // 点击射击
+        canvas.addEventListener('click', (e) => {
+            if (gameState === 'playing' && !currentQuestionAnswered && bullets.length === 0) {
+                shoot();
+            }
+        });
+        
+        // 开始游戏
+        function startGame() {
+            initAudio();
+            gameState = 'playing';
+            score = 0;
+            currentQuestion = 0;
+            lives = 3;
+            combo = 0;
+            maxCombo = 0;
+            correctCount = 0;
+            wrongAnswers = [];
+            targets = [];
+            bullets = [];
+            particles = [];
+            
+            questions = [...questionBank].sort(() => Math.random() - 0.5).slice(0, 10);
+            
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('gameUI').style.display = 'block';
+            
+            loadQuestion();
+        }
+        
+        // 加载题目
+        function loadQuestion() {
+            if (currentQuestion < 10) {
+                currentQuestionData = questions[currentQuestion];
+                document.getElementById('question').textContent = currentQuestionData.question;
+                createTargets();
+                updateUI();
+                currentQuestionAnswered = false;
+                lastHitTarget = null;
+            } else {
+                endGame();
+            }
+        }
+        
+        // 更新UI
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('current').textContent = currentQuestion + 1;
+            document.getElementById('combo').textContent = combo;
+            document.getElementById('lives').textContent = Math.max(0, lives);
+        }
+        
+        // 游戏结束
+        function endGame() {
+            gameState = 'ended';
+            document.getElementById('gameUI').style.display = 'none';
+            document.getElementById('endScreen').style.display = 'flex';
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('accuracy').textContent = Math.round((correctCount / 10) * 100);
+            document.getElementById('maxCombo').textContent = maxCombo;
+            
+            let grade = '';
+            if (score >= 90 && lives > 0) grade = '🏆 完美通关！历史学霸！';
+            else if (score >= 90) grade = '🌟 历史学霸！';
+            else if (score >= 80) grade = '⭐ 优秀！';
+            else if (score >= 70) grade = '👍 良好！';
+            else if (score >= 60) grade = '✅ 及格！';
+            else grade = '💪 继续努力！';
+            
+            document.getElementById('gradeDisplay').textContent = grade;
+            
+            const wrongDiv = document.getElementById('wrongAnswers');
+            if (wrongAnswers.length > 0) {
+                let html = '<h3 style="color: #FFD700; margin-bottom: 20px; font-size: 24px;">📚 错题回顾（请认真复习）：</h3>';
+                wrongAnswers.forEach((item, index) => {
+                    html += `<div class="wrong-item">
+                        <div style="font-size: 18px; font-weight: bold; margin-bottom: 8px;">
+                            ${index + 1}. ${item.question}
+                        </div>
+                        <div style="margin-left: 20px;">
+                            <div style="color: #10B981; margin-bottom: 4px;">
+                                ✅ 正确答案：<span style="font-weight: bold;">${item.correct}</span>
+                            </div>
+                            <div style="color: #EF4444;">
+                                ❌ 你的答案：<span style="font-weight: bold;">${item.wrong}</span>
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                wrongDiv.innerHTML = html;
+            } else {
+                wrongDiv.innerHTML = '<p style="color: #10B981; font-size: 28px; text-align: center; margin-top: 40px;">🎉 太棒了！全部答对！满分通关！</p>';
+            }
+        }
+        
+        // 重新开始
+        function restartGame() {
+            document.getElementById('endScreen').style.display = 'none';
+            startGame();
+        }
+        
+        // 显示/隐藏排行榜
+        function toggleLeaderboard() {
+            alert('排行榜功能已关闭');
+        }
+        
+        // 初始化
+        createStars();
+        gameLoop();
+        
+        // 隐藏系统光标
+        document.body.style.cursor = 'none';
+    </script>
+</body>
+</html>
