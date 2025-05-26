@@ -1,0 +1,771 @@
+﻿好的，我们来应用这些修改：移除生命系统，调整选项显示，以及微调题目位置。
+
+```html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高考历史基础知识 - 双人独立对战 v5 (修复版)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+
+        body {
+            position: relative;
+            cursor: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        #divider {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(255,215,0,0.8), rgba(255,215,0,0.2), rgba(255,215,0,0.8));
+            transform: translateX(-50%);
+            z-index: 5;
+            box-shadow: 0 0 10px #FFD700;
+            display: none; /* Initially hidden */
+        }
+
+        #gameUI {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: none; /* Hidden by default */
+            flex-direction: row;
+            justify-content: space-between;
+            padding: 15px;
+        }
+
+        .player-ui {
+            width: 48%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 11;
+        }
+
+        .player-ui.p1 { align-items: flex-start; }
+        .player-ui.p2 { align-items: flex-end; }
+
+        .question-display {
+            font-size: 20px;
+            text-align: center;
+            color: #FFD700;
+            text-shadow: 0 0 10px #FFD700;
+            margin-top: 20px; /* MODIFIED: Increased margin-top */
+            margin-bottom: 10px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.6);
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid #FFD700;
+            max-width: 95%; /* Increased max-width */
+            min-height: 80px;
+            pointer-events: auto;
+        }
+
+        .player-stats {
+            width: 280px; /* Adjusted width */
+            background: linear-gradient(135deg, rgba(0,100,255,0.3), rgba(0,200,255,0.2));
+            padding: 10px;
+            border-radius: 20px;
+            border: 2px solid rgba(0,200,255,0.6);
+            backdrop-filter: blur(8px);
+            font-size: 16px;
+            box-shadow: 0 0 15px rgba(0,200,255,0.4);
+            text-align: center;
+        }
+         .player-stats.p2 {
+            background: linear-gradient(135deg, rgba(255,0,100,0.3), rgba(255,0,200,0.2));
+            border: 2px solid rgba(255,0,200,0.6);
+            box-shadow: 0 0 15px rgba(255,0,200,0.4);
+         }
+
+        .player-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 0 0 5px;
+        }
+        .player-stats.p1 .player-title { color: #60A5FA; }
+        .player-stats.p2 .player-title { color: #F472B6; }
+
+        .stat-item {
+            display: inline-block;
+            margin: 5px 8px; /* Increased margin */
+            font-size: 15px; /* Slightly larger */
+        }
+
+        #crosshair, #crosshairP2 {
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s linear;
+        }
+
+        #startScreen, #endScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at center, rgba(0,0,80,0.95), rgba(0,0,0,1));
+            z-index: 100;
+            text-align: center;
+            cursor: auto;
+            pointer-events: auto;
+        }
+
+        #startScreen { display: flex; }
+        #endScreen { display: none; }
+
+
+        .game-title {
+            font-size: 56px;
+            color: #FFD700;
+            text-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500;
+            margin-bottom: 30px;
+            animation: titleFloat 3s ease-in-out infinite;
+            letter-spacing: 3px;
+        }
+
+        @keyframes titleFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .btn {
+            padding: 18px 50px;
+            font-size: 22px;
+            background: linear-gradient(135deg, #1E90FF, #00BFFF, #4169E1);
+            background-size: 200% 200%;
+            animation: btnGradient 3s ease infinite;
+            border: none;
+            border-radius: 50px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+            box-shadow: 0 5px 25px rgba(30,144,255,0.5);
+            position: relative;
+            overflow: hidden;
+            z-index: 105;
+            pointer-events: auto;
+        }
+
+        @keyframes btnGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 8px 35px rgba(30,144,255,0.7);
+        }
+
+        #wrongAnswers {
+            margin-top: 20px;
+            max-width: 900px;
+            width: 90%;
+            max-height: 250px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.6);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid rgba(255,215,0,0.3);
+            backdrop-filter: blur(10px);
+            z-index: 105;
+            text-align: left;
+        }
+
+        .wrong-item {
+            background: linear-gradient(to right, rgba(255,0,0,0.15), rgba(255,0,0,0.05));
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 10px;
+            border-left: 5px solid #FF4444;
+            font-size: 15px;
+        }
+
+        #soundToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #FFD700;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 101;
+            pointer-events: auto;
+        }
+
+        #startScreen .controls-info {
+            display: flex;
+            justify-content: space-around;
+            width: 80%;
+            text-align: left;
+            margin-top: 20px;
+            color: #87CEEB;
+            font-size: 16px;
+        }
+         #startScreen .controls-info div {
+             background: rgba(0,0,0,0.3);
+             padding: 15px;
+             border-radius: 10px;
+             border: 1px solid #87CEEB;
+         }
+
+        .winner-display {
+            font-size: 72px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            animation: winnerPulse 1.5s ease-in-out infinite;
+            z-index: 105;
+            position: relative;
+        }
+        .p1-win { color: #60A5FA; text-shadow: 0 0 30px #60A5FA, 0 0 60px #00BFFF; }
+        .p2-win { color: #F472B6; text-shadow: 0 0 30px #F472B6, 0 0 60px #FF00FF; }
+        .draw { color: #FFD700; text-shadow: 0 0 30px #FFD700, 0 0 60px #FFA500; }
+
+        @keyframes winnerPulse {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 20px;
+            background-color: #f00;
+            opacity: 0.9;
+            animation: fall 5s linear infinite;
+            z-index: 102;
+        }
+
+        @keyframes fall {
+            0% { transform: translateY(-50px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+        }
+
+        @keyframes correctAnswerAnim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="divider"></div>
+
+    <div id="crosshair"> <svg width="50" height="50"> <circle cx="25" cy="25" r="20" fill="none" stroke="#60A5FA" stroke-width="2" opacity="0.8"/> <circle cx="25" cy="25" r="3" fill="#60A5FA"/> <line x1="25" y1="5" x2="25" y2="15" stroke="#60A5FA" stroke-width="2"/> <line x1="25" y1="35" x2="25" y2="45" stroke="#60A5FA" stroke-width="2"/> <line x1="5" y1="25" x2="15" y2="25" stroke="#60A5FA" stroke-width="2"/> <line x1="35" y1="25" x2="45" y2="25" stroke="#60A5FA" stroke-width="2"/> </svg> </div>
+    <div id="crosshairP2"> <svg width="50" height="50"> <circle cx="25" cy="25" r="20" fill="none" stroke="#F472B6" stroke-width="2" opacity="0.8"/> <circle cx="25" cy="25" r="3" fill="#F472B6"/> <line x1="25" y1="5" x2="25" y2="15" stroke="#F472B6" stroke-width="2"/> <line x1="25" y1="35" x2="25" y2="45" stroke="#F472B6" stroke-width="2"/> <line x1="5" y1="25" x2="15" y2="25" stroke="#F472B6" stroke-width="2"/> <line x1="35" y1="25" x2="45" y2="25" stroke="#F472B6" stroke-width="2"/> </svg> </div>
+
+    <div id="soundToggle" onclick="toggleSound()">🔊</div>
+
+    <div id="gameUI">
+        <div class="player-ui p1">
+            <div class="question-display" id="questionP1">玩家1题目区</div>
+            <div class="player-stats p1">
+                <div class="player-title">玩家 1 (鼠标)</div>
+                <div class="stat-item">🎯 得分: <span id="scoreP1">0</span></div>
+                <div class="stat-item">📝 <span id="currentP1">1</span>/10 题</div>
+                <div class="stat-item">🔥 连击: <span id="comboP1">0</span></div>
+            </div>
+        </div>
+        <div class="player-ui p2">
+            <div class="question-display" id="questionP2">玩家2题目区</div>
+             <div class="player-stats p2">
+                 <div class="player-title">玩家 2 (A/D/空格)</div>
+                <div class="stat-item">🎯 得分: <span id="scoreP2">0</span></div>
+                <div class="stat-item">📝 <span id="currentP2">1</span>/10 题</div>
+                <div class="stat-item">🔥 连击: <span id="comboP2">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="startScreen">
+        <h1 class="game-title">🚀 高考历史基础知识 🚀</h1>
+        <p style="font-size: 24px; margin-bottom: 10px; color: #00BFFF;">双人独立对战</p>
+        <p style="font-size: 18px; margin-bottom: 30px; color: #87CEEB;">屏幕分两半，各自为战，必须答完10题！</p>
+        <button class="btn" onclick="startGame()">⚔️ 开始对战</button>
+        <div class="controls-info">
+            <div> <p><strong>玩家 1 (左侧):</strong></p> <p>移动鼠标瞄准</p> <p>点击左键射击</p> </div>
+            <div> <p><strong>玩家 2 (右侧):</strong></p> <p>A / D 键移动</p> <p>空格键射击</p> </div>
+        </div>
+        <div style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center;">
+             <p style="font-size: 16px; color: #FFD700; margin-bottom: 5px;">开发者：伊利丹</p>
+             <p style="font-size: 14px; color: #87CEEB;">© 2024 高考历史学习游戏 (v5)</p>
+         </div>
+    </div>
+
+    <div id="endScreen">
+        <h1 class="game-title" style="font-size: 48px; margin-bottom: 20px; z-index: 105;">🎯 挑战结束 🎯</h1>
+        <div class="winner-display" id="winnerDisplay"></div>
+        <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 30px; z-index: 105;">
+            <div style="text-align: center;">
+                <p style="font-size: 20px; color: #60A5FA; margin-bottom: 10px;">玩家 1 得分</p>
+                <p style="font-size: 56px; color: #60A5FA; font-weight: bold;"><span id="finalScoreP1">0</span></p>
+            </div>
+             <div style="text-align: center;">
+                <p style="font-size: 20px; color: #F472B6; margin-bottom: 10px;">玩家 2 得分</p>
+                <p style="font-size: 56px; color: #F472B6; font-weight: bold;"><span id="finalScoreP2">0</span></p>
+            </div>
+        </div>
+        <button class="btn" onclick="restartGame()" style="font-size: 24px; padding: 20px 60px; margin-bottom: 20px; z-index: 105;">🔄 再战一次</button>
+        <div id="wrongAnswers"></div>
+    </div>
+
+    <script>
+        // --- Get Elements ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const crosshairP1 = document.getElementById('crosshair');
+        const crosshairP2 = document.getElementById('crosshairP2');
+        const startScreen = document.getElementById('startScreen');
+        const endScreen = document.getElementById('endScreen');
+        const gameUI = document.getElementById('gameUI');
+        const wrongAnswersDiv = document.getElementById('wrongAnswers');
+        const divider = document.getElementById('divider');
+
+        // --- Audio Context & Sound ---
+        let audioContext = null;
+        let soundEnabled = true;
+        function initAudio() { try { audioContext = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { console.error("Web Audio API is not supported"); soundEnabled = false; } }
+        function playSound(type, player = null) { if (!soundEnabled || !audioContext) return; const osc = audioContext.createOscillator(); const gain = audioContext.createGain(); const panner = audioContext.createStereoPanner(); osc.connect(gain); gain.connect(panner); panner.connect(audioContext.destination); panner.pan.value = player ? (player.id === 1 ? -0.9 : 0.9) : 0; switch(type) { case 'shoot': osc.frequency.value = 800; osc.type = 'square'; gain.gain.setValueAtTime(0.06, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1); osc.start(); osc.stop(audioContext.currentTime + 0.1); break; case 'hit': osc.frequency.value = 400; osc.type = 'sine'; gain.gain.setValueAtTime(0.1, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3); osc.start(); osc.stop(audioContext.currentTime + 0.3); break; case 'correct': osc.frequency.value = 600; osc.type = 'triangle'; gain.gain.setValueAtTime(0.12, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2); osc.start(); osc.stop(audioContext.currentTime + 0.2); break; case 'wrong': osc.frequency.value = 150; osc.type = 'sawtooth'; gain.gain.setValueAtTime(0.15, audioContext.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4); osc.start(); osc.stop(audioContext.currentTime + 0.4); break; case 'win': [659.25, 783.99, 1046.50].forEach((freq, i) => { const o = audioContext.createOscillator(), g = audioContext.createGain(), p = audioContext.createStereoPanner(); o.connect(g); g.connect(p); p.connect(audioContext.destination); o.frequency.value = freq; o.type = 'triangle'; p.pan.value = 0; g.gain.setValueAtTime(0.15, audioContext.currentTime + i * 0.15); g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + i * 0.15 + 0.3); o.start(audioContext.currentTime + i * 0.15); o.stop(audioContext.currentTime + i * 0.15 + 0.3); }); break; } }
+        function toggleSound() { soundEnabled = !soundEnabled; document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇'; if(soundEnabled && !audioContext) initAudio(); }
+
+        // --- Game Variables ---
+        let p1Rect, p2Rect;
+        let gameState = 'menu';
+        let particles = [];
+        let stars = [];
+        let p2Keys = { left: false, right: false, shoot: false };
+        let mouseX = 0, mouseY = 0;
+        let player1 = {};
+        let player2 = {};
+
+        const questionBank = [ /* ... Full question bank here ... */
+            { question: "当前官方观点是：中国有_____年的文明史", correctAnswer: "5千", wrongAnswers: ["100万年", "1万年", "3千年"] },
+            { question: "科举制废除于_____时期", correctAnswer: "清末新政", wrongAnswers: ["中华民国临时政府", "新文化运动", "戊戌变法"] },
+            { question: "科举制正式废除于_____年", correctAnswer: "1905", wrongAnswers: ["1911", "1912", "1901"] },
+            { question: "当前官方观点是：_____文化，实证中华文明五千年", correctAnswer: "良渚", wrongAnswers: ["陶寺", "红山", "仰韶"] },
+            { question: "战国初期，对儒家构成巨大压力的是_____。", correctAnswer: "墨家与杨朱学派", wrongAnswers: ["法家与道家", "佛教与道教", "宗教神学观"] },
+            { question: "小农经济产生于_____时期。", correctAnswer: "春秋战国", wrongAnswers: ["新石器时代初期", "西周", "魏晋庄园经济"] },
+            { question: "儒学在汉代开始了_____化。", correctAnswer: "神学", wrongAnswers: ["伦理学", "哲学", "科学"] },
+            { question: "儒学在_____时期完成了哲学化。", correctAnswer: "宋明", wrongAnswers: ["战国", "汉代", "明清"] },
+            { question: "新疆在_____时期正式纳入中国版图。", correctAnswer: "西汉", wrongAnswers: ["秦朝", "唐朝", "元朝"] },
+            { question: "西藏在_____时期正式纳入中国版图。", correctAnswer: "元朝", wrongAnswers: ["汉朝", "唐朝", "明朝"] },
+            { question: "康熙时期，清政府在台湾设____，隶属福建省", correctAnswer: "府", wrongAnswers: ["县", "州", "省"] },
+            { question: "_____战争后，清政府在台湾正式设省。", correctAnswer: "中法", wrongAnswers: ["鸦片", "甲午中日", "八国联军侵华"] },
+            { question: "私营手工业超过官营开始于_____", correctAnswer: "明朝中后期", wrongAnswers: ["春秋战国", "宋元时期", "鸦片战争后"] },
+            { question: "汉字、绘画的艺术化开始于____时期", correctAnswer: "魏晋", wrongAnswers: ["陶寺", "春秋战国", "唐"] },
+            { question: "“华夏认同”观念开始于____时期", correctAnswer: "东周", wrongAnswers: ["新石器时代", "西周", "秦汉"] },
+            { question: "租庸调制从____开始实行", correctAnswer: "唐朝", wrongAnswers: ["汉", "北魏", "清"] },
+            { question: "率先在全国通行纸币的是___", correctAnswer: "元代", wrongAnswers: ["汉武帝以后", "宋代", "明代"] },
+            { question: "设立内阁大学士的是____", correctAnswer: "明成祖", wrongAnswers: ["明太祖", "明宪宗", "万历帝"] },
+            { question: "_____，经济重心开始南移。", correctAnswer: "安史之乱后", wrongAnswers: ["魏晋南北朝", "两宋时期", "明中后期"] },
+            { question: "明朝起止时间是____年", correctAnswer: "1368--1644", wrongAnswers: ["960--1279", "1566--1644", "1644-1765"] },
+            { question: "中国自然经济开始解体于_____", correctAnswer: "鸦片战争后", wrongAnswers: ["晚明时期", "甲午战后", "新中国成立"] },
+            { question: "与中国同盟会产生同一年的是____", correctAnswer: "五大臣出洋考察宪政", wrongAnswers: ["甲午中日战争", "《辛丑条约》签订", "“皇族内阁”产生"] },
+            { question: "与“皇族内阁”同一年出现的是____", correctAnswer: "武昌起义", wrongAnswers: ["《辛丑条约》签订", "《钦定宪法大纲》颁布", "光绪和慈禧去世"] },
+            { question: "东南互保与____同时", correctAnswer: "义和团运动", wrongAnswers: ["太平天国运动", "洋务运动", "辛亥革命"] },
+            { question: "列宁逝世同一年发生的是____", correctAnswer: "国民党一大召开", wrongAnswers: ["五四运动", "北伐开始", "南昌起义"] },
+            { question: "与国民党形式上统一全国在同一年的是____", correctAnswer: "井冈山会师", wrongAnswers: ["南昌起义", "井冈山根据地开始建立", "中原大战"] },
+            { question: "甲午战后____年，日俄战争爆发。", correctAnswer: "十", wrongAnswers: ["两年", "五年", "二十年"] },
+            { question: "国民党政府推行法币政策是在____年", correctAnswer: "1935", wrongAnswers: ["1933", "1937", "1948"] },
+            { question: "国民党政府“训政”阶段的时间是____年期间。", correctAnswer: "1928--1948", wrongAnswers: ["1912--1927", "1927--1937", "1937--1945"] },
+            { question: "清朝对外贸易第一次出现入超是在____年。", correctAnswer: "1865", wrongAnswers: ["1842", "1895", "1901"] },
+            { question: "《资政新篇》颁布的同一年，_____发表。", correctAnswer: "《物种起源》", wrongAnswers: ["“日心说”", "《天朝田亩制度》", "三民主义"] },
+            { question: "太平天国运动的起止时间是____年。", correctAnswer: "1851--1864", wrongAnswers: ["1856--1860", "1861--1895", "1860--1885"] },
+            { question: "《天朝田亩制度》颁布100周年时，中国开始进行_____。", correctAnswer: "农业合作化", wrongAnswers: ["土地改革运动", "人民公社化", "家庭联产承包责任制"] },
+            { question: "不属于中国19世纪70年代出现的是____。", correctAnswer: "中法战争", wrongAnswers: ["民族资本主义产生", "洋务派民用工业开始", "边疆危机"] },
+            { question: "属于中国19世纪40年代出现的是____。", correctAnswer: "五口通商", wrongAnswers: ["洋务运动", "火烧圆明园", "太平天国运动"] },
+            { question: "属于中国19世纪50年代出现的是____。", correctAnswer: "农民运动达到了最高峰", wrongAnswers: ["近代工业化开始", "边疆危机", "安庆内军械所"] },
+            { question: "甲午中日战争发生在____年。", correctAnswer: "1894--1895", wrongAnswers: ["1883--1885", "1898", "1900--1901"] },
+            { question: "列强对华资本输出为主的时间是____以后。", correctAnswer: "甲午战争", wrongAnswers: ["鸦片战争", "太平天国运动", "《辛丑条约》签订"] },
+            { question: "列强瓜分中国的狂潮开始于____年。", correctAnswer: "1897", wrongAnswers: ["1860", "1898", "1901"] },
+            { question: "清政府宣布“预备立宪”开始于____年。", correctAnswer: "1906", wrongAnswers: ["1901", "1905", "1908"] },
+            { question: "不属于1908年发生的是____。", correctAnswer: "“皇族内阁”出台", wrongAnswers: ["慈禧去世", "《钦定宪法大纲》", "光绪去世"] },
+            { question: "属于1912年1月份的是____。", correctAnswer: "民国建立", wrongAnswers: ["清朝灭亡", "北洋政府成立", "《临时约法》颁布"] },
+            { question: "两税法产生的背景是____。", correctAnswer: "安史之乱以后", wrongAnswers: ["贞观年间", "开元盛世", "均田制盛行"] },
+            { question: "设置驻藏大臣的朝代是____朝。", correctAnswer: "清", wrongAnswers: ["汉", "唐", "元"] },
+            { question: "设置十三行对外贸易机构的是____朝。", correctAnswer: "清", wrongAnswers: ["唐", "宋", "元"] },
+            { question: "两条丝绸之路最早开通于____朝。", correctAnswer: "汉", wrongAnswers: ["秦", "唐", "元"] },
+            { question: "不属于汉武帝时期的是实行____政策。", correctAnswer: "削藩", wrongAnswers: ["五经博士", "中朝制", "盐铁官营"] },
+            { question: "下列属于汉武帝时期与西域关系的是____。", correctAnswer: "张骞通西域", wrongAnswers: ["设立西域都护", "设立安西都护府", "设立北庭都护府"] },
+            { question: "华北五省不允许科举考试，最早始于____年。", correctAnswer: "1901", wrongAnswers: ["1860", "1895", "1912"] },
+            { question: "世界上最早由国家颁行的药典是在____朝。", correctAnswer: "唐", wrongAnswers: ["汉", "宋", "元"] },
+            { question: "中国现存最早的一部完整的农书产生于____时期。", correctAnswer: "北朝", wrongAnswers: ["汉朝", "唐朝", "五代"] },
+            { question: "“取士不问家世，婚姻不问阀阅”是____代的现象。", correctAnswer: "宋", wrongAnswers: ["周", "魏晋", "唐"] },
+            { question: "理学成为官方正统思想的是在____。", correctAnswer: "南宋以后", wrongAnswers: ["北宋中期", "南宋中期", "明朝初期"] },
+            { question: "倭寇不断对我国东部沿海进行侵扰开始于____。", correctAnswer: "元朝末期", wrongAnswers: ["两宋之际", "明朝初期", "明朝中期"] },
+            { question: "《尼布楚条约》签订在____年。", correctAnswer: "1689", wrongAnswers: ["1553", "1662", "1684"] },
+            { question: "思想家李贽是____的重要思想家。", correctAnswer: "明朝中后期", wrongAnswers: ["明朝中期", "明末清初", "清朝中期"] },
+            { question: "京剧形成于清朝____时期。", correctAnswer: "道光", wrongAnswers: ["康熙", "乾隆", "同治"] },
+            { question: "道教兴起于____。", correctAnswer: "东汉末年", wrongAnswers: ["春秋", "战国", "西汉末期"] },
+            { question: "安史之乱发生的时间是____。", correctAnswer: "8世纪中期", wrongAnswers: ["6世纪晚期", "7世纪初期", "10世纪初期"] }
+        ];
+
+        // --- Functions ---
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; p1Rect = { x: 0, y: 0, width: canvas.width / 2, height: canvas.height }; p2Rect = { x: canvas.width / 2, y: 0, width: canvas.width / 2, height: canvas.height }; if (player1 && player1.y) player1.y = canvas.height - 150; if (player2 && player2.y) player2.y = canvas.height - 150; if(divider) divider.style.height = canvas.height + 'px'; }
+        function initPlayer(id, rect, color, j20Body, j20Wing) {
+            return {
+                id: id,
+                x: rect.x + rect.width / 2,
+                y: canvas.height - 150,
+                targetX: rect.x + rect.width / 2,
+                angle: 0,
+                speed: id === 1 ? 0.2 : 8,
+                score: 0,
+                // lives: 3, // MODIFIED: Removed lives
+                combo: 0,
+                maxCombo: 0,
+                bullets: [],
+                targets: [],
+                questions: [],
+                currentQuestionIndex: 0,
+                currentQuestionData: null,
+                questionAnswered: false,
+                wrongAnswers: [],
+                rect: rect,
+                color: color,
+                j20Body: j20Body,
+                j20Wing: j20Wing,
+                shootCooldown: 0,
+                isFinished: false,
+            };
+        }
+        function createStars() { stars = []; for (let i = 0; i < 200; i++) { stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 0.5 + 0.1, brightness: Math.random() }); } }
+        function drawBackground() { const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width); gradient.addColorStop(0, '#0a0a2e'); gradient.addColorStop(0.5, '#16213e'); gradient.addColorStop(1, '#000000'); ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, canvas.height); stars.forEach(star => { ctx.fillStyle = `rgba(255, 255, 255, ${star.brightness})`; ctx.fillRect(star.x, star.y, star.size, star.size); star.y += star.speed; if (star.y > canvas.height + 10) { star.y = -10; star.x = Math.random() * canvas.width; } }); }
+        function drawJ20(player) { if(player.id === 1) { player.x += (player.targetX - player.x) * player.speed; } else { if(p2Keys.left) player.x -= player.speed; if(p2Keys.right) player.x += player.speed; } player.x = Math.max(player.rect.x + 50, Math.min(player.rect.x + player.rect.width - 50, player.x)); player.angle = (player.targetX - player.x) * (player.id === 1 ? 0.0004 : 0); ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle); ctx.shadowColor = player.color; ctx.shadowBlur = 15; const bodyGradient = ctx.createLinearGradient(0, -50, 0, 50); bodyGradient.addColorStop(0, player.j20Body); bodyGradient.addColorStop(1, player.j20Wing); ctx.fillStyle = bodyGradient; ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(-10, -30); ctx.lineTo(-15, 0); ctx.lineTo(-18, 35); ctx.lineTo(-12, 50); ctx.lineTo(0, 45); ctx.lineTo(12, 50); ctx.lineTo(18, 35); ctx.lineTo(15, 0); ctx.lineTo(10, -30); ctx.closePath(); ctx.fill(); ctx.fillStyle = player.j20Wing; ctx.beginPath(); ctx.moveTo(-15, -5); ctx.lineTo(-50, 20); ctx.lineTo(-45, 40); ctx.lineTo(-18, 30); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(15, -5); ctx.lineTo(50, 20); ctx.lineTo(45, 40); ctx.lineTo(18, 30); ctx.closePath(); ctx.fill(); const cockpitGradient = ctx.createRadialGradient(0, -25, 0, 0, -25, 15); cockpitGradient.addColorStop(0, `rgba(${player.id === 1 ? '100, 200, 255' : '255, 100, 180'}, 0.9)`); cockpitGradient.addColorStop(1, `rgba(${player.id === 1 ? '50, 150, 200' : '200, 50, 130'}, 0.6)`); ctx.fillStyle = cockpitGradient; ctx.beginPath(); ctx.ellipse(0, -25, 8, 15, 0, 0, Math.PI * 2); ctx.fill(); ctx.shadowColor = 'rgba(255, 100, 0, 0.8)'; ctx.shadowBlur = 20; for (let i = -1; i <= 1; i += 2) { const flameLength = 30 + Math.random() * 20; const flameGradient = ctx.createLinearGradient(i*8, 45, i*8, 45 + flameLength); flameGradient.addColorStop(0, 'rgba(255, 200, 100, 0.9)'); flameGradient.addColorStop(0.5, 'rgba(255, 100, 50, 0.7)'); flameGradient.addColorStop(1, 'rgba(255, 50, 0, 0)'); ctx.fillStyle = flameGradient; ctx.beginPath(); ctx.moveTo(i*8 - 5, 45); ctx.lineTo(i*8 - 3, 50); ctx.lineTo(i*8, 45 + flameLength); ctx.lineTo(i*8 + 3, 50); ctx.lineTo(i*8 + 5, 45); ctx.closePath(); ctx.fill(); } ctx.shadowBlur = 0; ctx.restore(); }
+        function createTargets(player) { if (!player.currentQuestionData || player.isFinished) return; player.targets = []; const data = player.currentQuestionData; const answers = [data.correctAnswer, ...data.wrongAnswers.slice(0, 3)].sort(() => Math.random() - 0.5); for (let i = 0; i < 4; i++) { const shapeData = []; const points = 12 + Math.floor(Math.random() * 4); for (let j = 0; j < points; j++) { shapeData.push({ angle: (j / points) * Math.PI * 2, radiusOffset: Math.random() * 20 - 10 }); } player.targets.push({ x: player.rect.x + (i + 0.5) * (player.rect.width / 4), y: -150 - Math.random() * 100, text: answers[i], isCorrect: answers[i] === data.correctAnswer, speed: 1.05 + player.currentQuestionIndex * 0.1, size: 70, hit: false, shapeData: shapeData, glowPhase: Math.random() * Math.PI * 2 }); } }
+
+        function drawTargets(player) {
+            player.targets.forEach(target => {
+                if (target.hit) return;
+                ctx.save();
+                ctx.translate(target.x, target.y);
+
+                // --- Draw Asteroid ---
+                const glow = Math.sin(Date.now() * 0.003 + target.glowPhase) * 0.3 + 0.7;
+                ctx.shadowColor = 'rgba(100, 150, 255, 0.8)';
+                ctx.shadowBlur = 15 * glow;
+                ctx.fillStyle = '#4A90E2';
+                ctx.beginPath();
+                const baseRadius = target.size / 2;
+                target.shapeData.forEach((point, i) => { const radius = baseRadius + point.radiusOffset; const x = Math.cos(point.angle) * radius; const y = Math.sin(point.angle) * radius; if (i === 0) { ctx.moveTo(x, y); } else { ctx.lineTo(x, y); } });
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#60A5FA';
+                for (let i = 0; i < 3; i++) { const dotX = (Math.random() - 0.5) * target.size * 0.7; const dotY = (Math.random() - 0.5) * target.size * 0.7; ctx.beginPath(); ctx.arc(dotX, dotY, 2, 0, Math.PI * 2); ctx.fill(); }
+                ctx.shadowBlur = 0;
+
+                // --- Draw Text Box (MODIFIED) ---
+                ctx.font = 'bold 18px Microsoft YaHei'; // Increased font size
+                const metrics = ctx.measureText(target.text);
+                const padding = 25; // Horizontal padding
+                const baseWidth = target.size * 1.2; // Min width based on asteroid
+                const textWidth = metrics.width + padding;
+                const boxWidth = Math.min(player.rect.width * 0.23, Math.max(baseWidth, textWidth)); // Dynamic width with max
+                const boxHeight = 40; // Increased height
+                const boxY = target.size / 2 - 10; // Position below asteroid
+
+                // Draw Box
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.strokeStyle = '#60A5FA';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.roundRect(-boxWidth / 2, boxY, boxWidth, boxHeight, 8); // Use roundRect
+                ctx.fill();
+                ctx.stroke();
+
+                // Draw Text
+                ctx.fillStyle = '#FFFFFF';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(target.text, 0, boxY + boxHeight / 2);
+
+                ctx.restore();
+                target.y += target.speed;
+            });
+            player.targets = player.targets.filter(t => !t.hit && t.y < canvas.height + 100);
+        }
+
+        function shoot(player) { if (player.questionAnswered || player.isFinished || player.bullets.length >= 2 || player.shootCooldown > 0) return; playSound('shoot', player); player.bullets.push({ x: player.x, y: player.y - 50, vy: -15, owner: player }); player.shootCooldown = player.id === 1 ? 10 : 30; }
+        function drawBullets(player) { player.bullets = player.bullets.filter(bullet => { bullet.y += bullet.vy; ctx.shadowColor = player.color; ctx.shadowBlur = 10; ctx.fillStyle = player.color; ctx.fillRect(bullet.x - 3, bullet.y - 10, 6, 20); ctx.shadowBlur = 0; return bullet.y > -20; }); }
+        function createExplosion(x, y, color) { const particleCount = 30; for (let i = 0; i < particleCount; i++) { const angle = (Math.PI * 2 * i) / particleCount; const speed = 2 + Math.random() * 4; particles.push({ x: x, y: y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 1, color: color, size: Math.random() * 3 + 1 }); } }
+        function updateParticles() { particles = particles.filter(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.015; if (p.life > 0) { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; return true; } return false; }); }
+        function showCorrectAnswerPopup(player) { const correctTarget = player.targets.find(t => t.isCorrect); if (!correctTarget) return; const div = document.createElement('div'); div.style.position = 'fixed'; div.style.top = '60%'; div.style.left = player.id === 1 ? '25%' : '75%'; div.style.transform = 'translate(-50%, -50%)'; div.style.background = 'rgba(0, 200, 0, 0.7)'; div.style.border = '2px solid #10B981'; div.style.borderRadius = '10px'; div.style.padding = '15px 25px'; div.style.fontSize = '24px'; div.style.color = '#fff'; div.style.fontWeight = 'bold'; div.style.textAlign = 'center'; div.style.zIndex = '500'; div.style.animation = 'correctAnswerAnim 2s ease-out forwards'; div.innerHTML = `✅ ${correctTarget.text}`; document.body.appendChild(div); setTimeout(() => div.remove(), 2000); }
+        function createConfetti() { const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800']; for (let i = 0; i < 150; i++) { const confetti = document.createElement('div'); confetti.className = 'confetti'; confetti.style.left = Math.random() * 100 + 'vw'; confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)]; confetti.style.animationDuration = (Math.random() * 3 + 4) + 's'; confetti.style.animationDelay = (Math.random() * 2) + 's'; confetti.style.transform = `rotate(${Math.random() * 360}deg)`; endScreen.appendChild(confetti); } }
+        function clearConfetti() { const existing = document.querySelectorAll('.confetti'); existing.forEach(c => c.remove()); }
+
+        function checkCollisions(player) {
+            if (player.isFinished) return;
+            player.bullets.forEach(bullet => {
+                player.targets.forEach(target => {
+                    if (!target.hit && !player.questionAnswered &&
+                        Math.abs(bullet.x - target.x) < target.size/2 + 10 && // Check original size for hit
+                        Math.abs(bullet.y - target.y) < target.size/2 + 10) {
+                        target.hit = true;
+                        bullet.y = -100;
+                        createExplosion(target.x, target.y, player.color);
+                        playSound('hit', player);
+                        processAnswer(player, target);
+                    }
+                });
+            });
+
+            if (!player.questionAnswered) {
+                player.targets.forEach(target => {
+                     if (!target.hit && target.y > canvas.height + 50 && !player.questionAnswered) {
+                         player.questionAnswered = true;
+                         player.combo = 0;
+                         playSound('wrong', player);
+                         showCorrectAnswerPopup(player);
+                         player.wrongAnswers.push({ q: player.currentQuestionData.question, c: player.currentQuestionData.correctAnswer, w: "未作答" });
+                         setTimeout(() => loadQuestion(player), 2000);
+                     }
+                });
+            }
+        }
+
+        function processAnswer(player, target) {
+            if (player.questionAnswered) return;
+
+            player.questionAnswered = true;
+            let delay = 1000;
+
+            if (target.isCorrect) {
+                player.score += 10;
+                player.combo++;
+                if (player.combo > player.maxCombo) player.maxCombo = player.combo;
+                playSound('correct', player);
+            } else {
+                player.combo = 0;
+                // player.lives--; // MODIFIED: No lives lost
+                playSound('wrong', player);
+                showCorrectAnswerPopup(player);
+                delay = 2500;
+                player.wrongAnswers.push({ q: player.currentQuestionData.question, c: player.currentQuestionData.correctAnswer, w: target.text });
+            }
+
+            updateUI(player);
+            setTimeout(() => loadQuestion(player), delay); // Always load next Q
+        }
+
+        function loadQuestion(player) {
+            if (player.isFinished) return;
+
+            player.currentQuestionIndex++;
+
+            // MODIFIED: Only check for > 10 questions
+            if (player.currentQuestionIndex > 10) {
+                player.isFinished = true;
+                document.getElementById(`questionP${player.id}`).textContent = "已完成!";
+                checkGameEnd();
+                return;
+            }
+
+            player.currentQuestionData = player.questions[player.currentQuestionIndex - 1];
+
+            if (!player.currentQuestionData) {
+                console.error(`P${player.id} - FAILED to load question ${player.currentQuestionIndex}.`);
+                player.isFinished = true;
+                document.getElementById(`questionP${player.id}`).textContent = "题目错误!";
+                checkGameEnd();
+                return;
+            }
+
+            document.getElementById(`questionP${player.id}`).textContent = player.currentQuestionData.question;
+            player.questionAnswered = false;
+            createTargets(player);
+            updateUI(player);
+        }
+
+        function checkGameEnd() {
+            if (player1.isFinished && player2.isFinished && gameState === 'playing') {
+                endGame();
+            }
+        }
+
+        function updateUI(player) {
+            document.getElementById(`scoreP${player.id}`).textContent = player.score;
+            document.getElementById(`currentP${player.id}`).textContent = Math.min(player.currentQuestionIndex, 10);
+            document.getElementById(`comboP${player.id}`).textContent = player.combo;
+            // document.getElementById(`livesP${player.id}`).textContent = Math.max(0, player.lives); // MODIFIED: Removed
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+
+            if (gameState === 'playing') {
+                if (player1.shootCooldown > 0) player1.shootCooldown--;
+                if (player2.shootCooldown > 0) player2.shootCooldown--;
+                updatePlayer2Movement();
+
+                // P1 Side
+                ctx.save();
+                ctx.beginPath(); ctx.rect(p1Rect.x, p1Rect.y, p1Rect.width, p1Rect.height); ctx.clip();
+                if (!player1.isFinished) { drawJ20(player1); drawTargets(player1); drawBullets(player1); }
+                ctx.restore();
+
+                // P2 Side
+                ctx.save();
+                ctx.beginPath(); ctx.rect(p2Rect.x, p2Rect.y, p2Rect.width, p2Rect.height); ctx.clip();
+                 if (!player2.isFinished) { drawJ20(player2); drawTargets(player2); drawBullets(player2); }
+                ctx.restore();
+
+                updateParticles();
+                checkCollisions(player1);
+                checkCollisions(player2);
+
+                crosshairP1.style.left = mouseX < p1Rect.width ? mouseX + 'px' : '-100px';
+                crosshairP1.style.top = mouseY + 'px';
+                crosshairP2.style.left = player2.x + 'px';
+                crosshairP2.style.top = player2.y - 25 + 'px';
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+        function updatePlayer2Movement() { if(p2Keys.shoot) shoot(player2); }
+
+        // --- Controls ---
+        document.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; if (gameState === 'playing' && mouseX < p1Rect.width) { player1.targetX = mouseX; } document.body.style.cursor = (gameState === 'playing') ? 'none' : 'auto'; });
+        canvas.addEventListener('click', (e) => { initAudio(); if (gameState === 'playing' && e.clientX < p1Rect.width) { shoot(player1); } });
+        document.addEventListener('keydown', (e) => { initAudio(); if (gameState !== 'playing') return; switch(e.code) { case 'KeyA': p2Keys.left = true; break; case 'KeyD': p2Keys.right = true; break; case 'Space': p2Keys.shoot = true; break; } });
+        document.addEventListener('keyup', (e) => { if (gameState !== 'playing') return; switch(e.code) { case 'KeyA': p2Keys.left = false; break; case 'KeyD': p2Keys.right = false; break; case 'Space': p2Keys.shoot = false; break; } });
+
+        // --- Game State Functions ---
+        function startGame() {
+            initAudio();
+            resizeCanvas();
+
+            player1 = initPlayer(1, p1Rect, '#60A5FA', '#4A5568', '#1A202C');
+            player2 = initPlayer(2, p2Rect, '#F472B6', '#71495A', '#452C36');
+
+            let shuffled1 = [...questionBank].sort(() => 0.5 - Math.random());
+            player1.questions = shuffled1.slice(0, 10);
+            let shuffled2 = [...questionBank].sort(() => 0.5 - Math.random());
+            player2.questions = shuffled2.slice(0, 10);
+
+            gameState = 'playing';
+
+            startScreen.style.display = 'none';
+            endScreen.style.display = 'none';
+            gameUI.style.display = 'flex';
+            divider.style.display = 'block';
+            document.body.style.cursor = 'none';
+
+            clearConfetti();
+            loadQuestion(player1);
+            loadQuestion(player2);
+        }
+
+        function endGame() {
+            if (gameState === 'ended') return;
+            gameState = 'ended';
+
+            gameUI.style.display = 'none';
+            startScreen.style.display = 'none';
+            endScreen.style.display = 'flex';
+            divider.style.display = 'none';
+            document.body.style.cursor = 'auto';
+
+            document.getElementById('finalScoreP1').textContent = player1.score;
+            document.getElementById('finalScoreP2').textContent = player2.score;
+
+            const winnerDiv = document.getElementById('winnerDisplay');
+            let winner = null;
+            if (player1.score > player2.score) { winnerDiv.textContent = '🏆 玩家 1 获胜! 🏆'; winnerDiv.className = 'winner-display p1-win'; winner = player1; }
+            else if (player2.score > player1.score) { winnerDiv.textContent = '🏆 玩家 2 获胜! 🏆'; winnerDiv.className = 'winner-display p2-win'; winner = player2; }
+            else { winnerDiv.textContent = '平局!'; winnerDiv.className = 'winner-display draw'; }
+
+            wrongAnswersDiv.innerHTML = '<h3 style="color: #FFD700; margin-bottom: 10px; font-size: 20px;">📚 错题回顾：</h3>';
+            let allWrong = [...player1.wrongAnswers.map(w => ({...w, p: 1})), ...player2.wrongAnswers.map(w => ({...w, p: 2}))];
+            if (allWrong.length > 0) {
+                 allWrong.forEach((item, index) => {
+                     wrongAnswersDiv.innerHTML += `<div class="wrong-item">
+                         <div>${index + 1}. [玩家 ${item.p}] ${item.q}</div>
+                         <div>✅ 正确：${item.c} | ❌ 错误：${item.w}</div>
+                     </div>`;
+                 });
+            } else {
+                 wrongAnswersDiv.innerHTML += '<p style="color: #10B981; font-size: 20px; text-align: center;">🎉 双方都没有错题！</p>';
+            }
+
+            if (winner) { playSound('win'); createConfetti(); }
+        }
+
+        function restartGame() {
+            clearConfetti();
+            endScreen.style.display = 'none';
+            gameUI.style.display = 'none';
+            startScreen.style.display = 'flex';
+            divider.style.display = 'none';
+            gameState = 'menu';
+        }
+
+        // --- Initialisation ---
+        window.onload = () => {
+             createStars();
+             resizeCanvas();
+             gameLoop();
+             startScreen.style.display = 'flex';
+             gameUI.style.display = 'none';
+             endScreen.style.display = 'none';
+             divider.style.display = 'none';
+             document.body.style.cursor = 'auto';
+        };
+
+    </script>
+</body>
+</html>
+```
